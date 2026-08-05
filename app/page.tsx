@@ -96,7 +96,12 @@ export default function Home() {
       <footer>
         <a href="/" className="brand"><Leaf />Raíces</a>
         <p>Un espacio íntimo para preservar lo que importa.</p>
-        <div><a href="#privacidad">Privacidad</a><a href="#como-funciona">Cómo funciona</a></div>
+        <div className="footer-links"><a href="#privacidad">Privacidad</a><a href="#como-funciona">Cómo funciona</a></div>
+        <a className="creator-credit" href="https://www.instagram.com/bryans_quiroz/" target="_blank" rel="noopener noreferrer" aria-label="Diseño y desarrollo web por Quiroz. Ver Instagram de Bryans Quiroz">
+          <span className="creator-mark" aria-hidden="true">Q</span>
+          <span className="creator-copy"><small>Diseño y desarrollo web por</small><strong>Quiroz · @bryans_quiroz</strong></span>
+          <span className="creator-instagram" aria-hidden="true">Instagram ↗</span>
+        </a>
       </footer>
     </main>
   );
