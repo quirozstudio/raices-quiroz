@@ -1,18 +1,16 @@
-import Link from "next/link";
-
 const Leaf = () => <span className="leaf" aria-hidden="true">⌁</span>;
 
 export default function Home() {
   return (
     <main>
       <header className="site-header">
-        <Link href="/" className="brand" aria-label="Raíces, inicio"><Leaf />Raíces</Link>
+        <a href="/" className="brand" aria-label="Raíces, inicio"><Leaf />Raíces</a>
         <nav className="desktop-nav" aria-label="Navegación principal">
           <a href="#como-funciona">Cómo funciona</a>
           <a href="#privacidad">Privacidad</a>
           <a href="#historias">Historias</a>
         </nav>
-        <Link href="/mi-espacio" className="button button-ghost">Entrar</Link>
+        <a href="/mi-espacio" className="button button-ghost">Entrar</a>
       </header>
 
       <section className="hero">
@@ -23,7 +21,7 @@ export default function Home() {
           <h1>Tu vida merece<br />ser contada.</h1>
           <p className="hero-copy">Un espacio privado para escribir, guardar tus recuerdos y compartirlos solo con quien tú elijas.</p>
           <div className="hero-actions">
-            <Link href="/mi-espacio" className="button button-primary">Comenzar mi historia <span>→</span></Link>
+            <a href="/mi-espacio" className="button button-primary">Comenzar mi historia <span>→</span></a>
             <a href="#como-funciona" className="button button-soft">Descubrir cómo funciona</a>
           </div>
           <p className="privacy-note"><span aria-hidden="true">⌾</span> Privado desde el primer momento</p>
@@ -77,7 +75,7 @@ export default function Home() {
           <p className="eyebrow light">Privado por naturaleza</p>
           <h2>Tu historia no pertenece a internet. Te pertenece a ti.</h2>
           <p>Todo comienza siendo privado. Puedes conservarlo solo para ti, invitar a una persona concreta o compartir una historia con tu familia.</p>
-          <Link href="/mi-espacio" className="text-link">Conocer mi espacio privado <span>→</span></Link>
+          <a href="/mi-espacio" className="text-link">Conocer mi espacio privado <span>→</span></a>
         </div>
         <div className="permission-card">
           <div className="permission-top"><span className="lock">⌾</span><div><small>Historia protegida</small><strong>La casa donde crecí</strong></div><button aria-label="Opciones de la historia">•••</button></div>
@@ -92,11 +90,11 @@ export default function Home() {
         <Leaf />
         <h2>Hay historias que merecen quedarse.</h2>
         <p>Empieza por un recuerdo. No tiene que estar perfecto, solo tiene que ser tuyo.</p>
-        <Link href="/mi-espacio" className="button button-primary">Comenzar mi historia <span>→</span></Link>
+        <a href="/mi-espacio" className="button button-primary">Comenzar mi historia <span>→</span></a>
       </section>
 
       <footer>
-        <Link href="/" className="brand"><Leaf />Raíces</Link>
+        <a href="/" className="brand"><Leaf />Raíces</a>
         <p>Un espacio íntimo para preservar lo que importa.</p>
         <div><a href="#privacidad">Privacidad</a><a href="#como-funciona">Cómo funciona</a></div>
       </footer>
