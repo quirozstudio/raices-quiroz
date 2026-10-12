@@ -36,19 +36,22 @@ export default function WorkspaceClient() {
   const [recording, setRecording] = useState(false);
   const recorder = useRef<MediaRecorder | null>(null);
   const chunks = useRef<Blob[]>([]);
+  const activeOwnerId = useRef<string | null>(null);
+  const authStateKey = useRef<string | null | undefined>(undefined);
 
   const notice = useCallback((text: string) => {
     setMessage(text);
     window.setTimeout(() => setMessage(""), 4000);
   }, []);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (ownerId: string) => {
     setBusy(true);
     const [storiesResult, memoriesResult, peopleResult] = await Promise.all([
-      supabase.from("stories").select("*").order("updated_at", { ascending: false }),
-      supabase.from("memories").select("*").order("created_at", { ascending: false }),
-      supabase.from("people").select("*").order("name"),
+      supabase.from("stories").select("*").eq("owner_id", ownerId).order("updated_at", { ascending: false }),
+      supabase.from("memories").select("*").eq("owner_id", ownerId).order("created_at", { ascending: false }),
+      supabase.from("people").select("*").eq("owner_id", ownerId).order("name"),
     ]);
+    if (activeOwnerId.current !== ownerId) return;
     const error = storiesResult.error || memoriesResult.error || peopleResult.error;
     if (error) notice(error.message);
     setStories(storiesResult.data || []);
@@ -58,15 +61,34 @@ export default function WorkspaceClient() {
   }, [notice, supabase]);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      setUser(data.user);
-      if (data.user) void load();
-    });
+    let mounted = true;
+    const applySession = (nextUser: User | null) => {
+      if (!mounted) return;
+      const nextKey = nextUser?.id || null;
+      if (authStateKey.current === nextKey) return;
+      authStateKey.current = nextKey;
+      activeOwnerId.current = nextKey;
+      setUser(nextUser);
+      setEditor(null);
+      setChapterStory(null);
+      setStories([]);
+      setMemories([]);
+      setPeople([]);
+      if (nextUser) void load(nextUser.id);
+      else setBusy(false);
+    };
+
     const { data } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user || null);
-      if (session?.user) void load();
+      applySession(session?.user || null);
     });
-    return () => data.subscription.unsubscribe();
+    supabase.auth.getUser().then(({ data }) => {
+      applySession(data.user);
+    });
+    return () => {
+      mounted = false;
+      activeOwnerId.current = null;
+      data.subscription.unsubscribe();
+    };
   }, [load, supabase]);
 
   async function sendLink(event: FormEvent) {
@@ -100,32 +122,31 @@ export default function WorkspaceClient() {
     const { data, error } = await supabase.from("stories").insert({ owner_id: user.id, title, prompt: selectedPrompt || null, content }).select().single();
     if (error) return notice(error.message);
     setEditor(data);
-    await load();
+    await load(user.id);
   }
 
   async function saveStory(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!editor) return;
+    if (!editor || !user) return;
     const form = new FormData(event.currentTarget);
     const title = String(form.get("title"));
     const content = String(form.get("content"));
-    const { error } = await supabase.from("stories").update({ title: String(form.get("title")), content: String(form.get("content")), status: String(form.get("status")), privacy: String(form.get("privacy")), updated_at: new Date().toISOString() }).eq("id", editor.id);
+    const { error } = await supabase.from("stories").update({ title: String(form.get("title")), content: String(form.get("content")), status: String(form.get("status")), privacy: String(form.get("privacy")), updated_at: new Date().toISOString() }).eq("id", editor.id).eq("owner_id", user.id);
     if (error) return notice(error.message);
     let versionWarning = false;
-    if (user) {
-      const { error: versionError } = await supabase.from("story_versions").insert({ story_id: editor.id, owner_id: user.id, title, content, change_reason: "Edición manual de la historia" });
-      versionWarning = Boolean(versionError);
-    }
+    const { error: versionError } = await supabase.from("story_versions").insert({ story_id: editor.id, owner_id: user.id, title, content, change_reason: "Edición manual de la historia" });
+    versionWarning = Boolean(versionError);
     setEditor(null);
-    await load();
+    if (user) await load(user.id);
     notice(versionWarning ? "Historia guardada, pero no hemos podido crear su copia de historial." : "Historia guardada con cariño");
   }
 
   async function deleteStory(id: string) {
+    if (!user) return;
     if (!confirm("¿Quieres eliminar esta historia? Esta acción no se puede deshacer.")) return;
-    const { error } = await supabase.from("stories").delete().eq("id", id);
+    const { error } = await supabase.from("stories").delete().eq("id", id).eq("owner_id", user.id);
     if (error) notice(error.message);
-    else { await load(); notice("Historia eliminada"); }
+    else if (user) { await load(user.id); notice("Historia eliminada"); }
   }
 
   async function storeFile(file: File) {
@@ -142,7 +163,7 @@ export default function WorkspaceClient() {
     event.preventDefault();
     const file = new FormData(event.currentTarget).get("file");
     if (!(file instanceof File)) return;
-    try { await storeFile(file); setUploadOpen(false); await load(); notice("Recuerdo guardado de forma privada"); }
+    try { await storeFile(file); setUploadOpen(false); if (user) await load(user.id); notice("Recuerdo guardado de forma privada"); }
     catch (error) { notice(error instanceof Error ? error.message : "No se pudo guardar"); }
   }
 
@@ -152,11 +173,12 @@ export default function WorkspaceClient() {
   }
 
   async function deleteMemory(item: Memory) {
+    if (!user) return;
     if (!confirm("¿Eliminar este recuerdo?")) return;
     const removed = await supabase.storage.from("memories").remove([item.object_path]);
     if (removed.error) return notice(removed.error.message);
-    await supabase.from("memories").delete().eq("id", item.id);
-    await load();
+    await supabase.from("memories").delete().eq("id", item.id).eq("owner_id", user.id);
+    await load(user.id);
   }
 
   async function addPerson(event: FormEvent<HTMLFormElement>) {
@@ -166,13 +188,14 @@ export default function WorkspaceClient() {
     const { error } = await supabase.from("people").insert({ owner_id: user.id, name: String(form.get("name")), email: String(form.get("email")).toLowerCase(), group_name: String(form.get("groupName")) });
     if (error) return notice(error.message);
     setPersonOpen(false);
-    await load();
+    await load(user.id);
     notice("Persona añadida");
   }
 
   async function removePerson(id: string) {
-    const { error } = await supabase.from("people").delete().eq("id", id);
-    if (error) notice(error.message); else await load();
+    if (!user) return;
+    const { error } = await supabase.from("people").delete().eq("id", id).eq("owner_id", user.id);
+    if (error) notice(error.message); else await load(user.id);
   }
 
   async function toggleRecording() {
@@ -186,7 +209,7 @@ export default function WorkspaceClient() {
       media.onstop = async () => {
         stream.getTracks().forEach((track) => track.stop());
         const blob = new Blob(chunks.current, { type: media.mimeType || "audio/webm" });
-        try { await storeFile(new File([blob], `Mi voz ${new Date().toLocaleDateString("es-ES")}.webm`, { type: blob.type })); await load(); notice("Grabación guardada"); }
+        try { await storeFile(new File([blob], `Mi voz ${new Date().toLocaleDateString("es-ES")}.webm`, { type: blob.type })); if (user) await load(user.id); notice("Grabación guardada"); }
         catch (error) { notice(error instanceof Error ? error.message : "No se pudo guardar"); }
       };
       media.start();
