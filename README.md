@@ -1,100 +1,73 @@
-# vinext-starter
+# Raíces Quiroz
 
-A clean full-stack starter running on
-[vinext](https://github.com/cloudflare/vinext), with optional Cloudflare D1 and
-Drizzle support.
+Raíces es un espacio privado para conservar historias de vida, recuerdos personales y legados familiares.
 
-## Prerequisites
+La experiencia combina escritura libre, preguntas narrativas, grabaciones de voz, recuerdos multimedia, capítulos y permisos por historia. La privacidad es la configuración inicial de todo el producto.
 
-- Node.js `>=22.13.0`
+## Stack
 
-## Quick Start
+- React 19 + TypeScript.
+- Vinext sobre Vite para la aplicación y el despliegue en Cloudflare.
+- Supabase Auth para enlaces mágicos y sesiones.
+- Supabase Database con Row Level Security.
+- Supabase Storage para fotografías, audios, vídeos y documentos privados.
+- Drizzle/D1 y R2 permanecen como superficie heredada del starter y no son la fuente principal del espacio privado.
+
+## Estructura principal
+
+- `app/page.tsx`: landing pública y SEO básico.
+- `app/mi-espacio/WorkspaceClient.tsx`: espacio personal, historias, recuerdos y personas.
+- `app/mi-espacio/LifeJourney.tsx`: recorrido biográfico guiado.
+- `app/mi-espacio/ChapterBuilder.tsx`: constructor de capítulos y versiones.
+- `app/mi-espacio/StorySharing.tsx`: permisos de lectura por historia.
+- `app/mi-espacio/narrative/questions.ts`: biblioteca narrativa extensible.
+- `utils/supabase/database.types.ts`: tipos generados y alineados con Supabase.
+- `db/` y `drizzle/`: esquema legado de la superficie Cloudflare.
+
+## Datos de Supabase
+
+El proyecto conectado contiene estas tablas principales:
+
+- `stories`: historias personales.
+- `story_chapters`: capítulos ordenables.
+- `story_versions`: historial de versiones de capítulos.
+- `memories`: archivos privados vinculados a historias.
+- `people`: personas de confianza.
+- `story_access`: personas autorizadas por historia.
+- `life_journeys`: progreso y respuestas del recorrido biográfico.
+
+Todas las tablas de usuario tienen RLS activo. El bucket `memories` es privado y limita los archivos a 25 MB.
+
+## Configuración local
+
+Requisitos:
+
+- Node.js `>=22.13.0`.
+- Variables públicas de Supabase en `.env.local`:
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://tu-proyecto.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=tu_clave_publicable
+```
+
+Nunca añadas claves `service_role` o `sb_secret_...` al frontend ni a variables `NEXT_PUBLIC_`.
+
+## Comandos
 
 ```bash
 npm install
 npm run dev
+npm run lint
 npm run build
+npm test
 ```
 
-This starter does not use `wrangler.jsonc`.
+`npm test` compila la aplicación y verifica el render público, la base narrativa, el constructor de capítulos y los recursos visuales.
 
-## Included Shape
+## Principios de producto
 
-- edit site code under `app/`
-- `.openai/hosting.json` declares optional Sites D1 and R2 bindings
-- `vite.config.ts` simulates declared bindings for local development
-- `db/schema.ts` starts intentionally empty
-- `examples/d1/` contains an optional D1 example surface
-- `drizzle.config.ts` supports local migration generation when needed
-
-## Workspace Auth Headers
-
-Signed-in visitors receive both `oai-authenticated-user-id` and `oai-authenticated-user-email`. Private Sites require every visitor to sign in; public Sites may also have anonymous visitors, for whom neither header is present.
-
-The user ID is stable for the same user on the same Site and different across Sites. Email and name are intended for display or contact purposes.
-
-SIWC-authenticated workspace sites may also receive
-`oai-authenticated-user-full-name` when the user's SIWC profile has a non-empty
-`name` claim. The full-name value is percent-encoded UTF-8 and is accompanied by
-`oai-authenticated-user-full-name-encoding: percent-encoded-utf-8`.
-
-Treat the full name as optional and fall back to email when it is absent:
-
-```tsx
-import { headers } from "next/headers";
-
-export default async function Home() {
-  const requestHeaders = await headers();
-  const userId = requestHeaders.get("oai-authenticated-user-id");
-  const email = requestHeaders.get("oai-authenticated-user-email");
-  const encodedFullName = requestHeaders.get("oai-authenticated-user-full-name");
-  const fullName =
-    encodedFullName &&
-    requestHeaders.get("oai-authenticated-user-full-name-encoding") ===
-      "percent-encoded-utf-8"
-      ? decodeURIComponent(encodedFullName)
-      : null;
-
-  const displayName = fullName ?? email;
-  // ...
-}
-```
-
-## Optional Dispatch-Owned ChatGPT Sign-In
-
-Import the ready-to-use helpers from `app/chatgpt-auth.ts` when the site needs
-optional or required ChatGPT sign-in:
-
-- Use `getChatGPTUser()` for optional signed-in UI.
-- Use `requireChatGPTUser(returnTo)` for server-rendered pages that should send
-  anonymous visitors through Sign in with ChatGPT.
-- Use `chatGPTSignInPath(returnTo)` and `chatGPTSignOutPath(returnTo)` for
-  browser links or actions.
-- Pass a same-origin relative `returnTo` path for the destination after sign-in
-  or sign-out. The helper validates and safely encodes it.
-- Mark protected pages with `export const dynamic = "force-dynamic"` because
-  they depend on per-request identity headers.
-
-Dispatch owns `/signin-with-chatgpt`, `/signout-with-chatgpt`, `/callback`, the
-OAuth cookies, and identity header injection. Do not implement app routes for
-those reserved paths. Routes that do not import and call the helper remain
-anonymous-compatible.
-
-SIWC establishes identity only; it does not prove workspace membership. Use the
-Sites hosting platform's access policy controls for workspace-wide restrictions,
-or enforce explicit server-side membership or allowlist checks.
-
-Use SIWC for account pages, user-specific dashboards, saved records, and write
-actions tied to the current ChatGPT user. Leave public content anonymous.
-
-## Useful Commands
-
-- `npm run dev`: start local development
-- `npm run build`: verify the vinext build output
-- `npm test`: build the starter and verify its rendered loading skeleton
-- `npm run db:generate`: generate Drizzle migrations after schema changes
-
-## Learn More
-
-- [vinext Documentation](https://github.com/cloudflare/vinext)
-- [Drizzle D1 Guide](https://orm.drizzle.team/docs/get-started/d1-new)
+- Nada se comparte por defecto.
+- El usuario conserva la última palabra sobre cualquier transformación narrativa.
+- La aplicación no inventa recuerdos, personas ni sentimientos.
+- Las preguntas se pueden saltar y el progreso se guarda automáticamente.
+- Las funciones de IA externas deberán incorporar consentimiento explícito, control de costes y una política clara de tratamiento de datos.

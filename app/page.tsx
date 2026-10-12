@@ -1,10 +1,12 @@
+import Link from "next/link";
+
 const Leaf = () => <span className="leaf" aria-hidden="true">⌁</span>;
 
 export default function Home() {
   return (
     <main>
       <header className="site-header">
-        <a href="/" className="brand" aria-label="Raíces, inicio"><Leaf />Raíces</a>
+        <Link href="/" className="brand" aria-label="Raíces, inicio"><Leaf />Raíces</Link>
         <nav className="desktop-nav" aria-label="Navegación principal">
           <a href="#como-funciona">Cómo funciona</a>
           <a href="#privacidad">Privacidad</a>
@@ -94,7 +96,7 @@ export default function Home() {
       </section>
 
       <footer>
-        <a href="/" className="brand"><Leaf />Raíces</a>
+        <Link href="/" className="brand"><Leaf />Raíces</Link>
         <p>Un espacio íntimo para preservar lo que importa.</p>
         <div className="footer-links"><a href="#privacidad">Privacidad</a><a href="#como-funciona">Cómo funciona</a></div>
         <a className="creator-credit" href="https://www.instagram.com/bryans_quiroz/" target="_blank" rel="noopener noreferrer" aria-label="Diseño y desarrollo web por Quiroz. Ver Instagram de Bryans Quiroz">

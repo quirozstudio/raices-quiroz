@@ -2,14 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
+import type { Database } from "../../utils/supabase/database.types";
 
 type AnswerMap = Record<string, string>;
-type JourneyRow = {
-  owner_id: string;
+type JourneyRow = Omit<Database["public"]["Tables"]["life_journeys"]["Row"], "answers"> & {
   answers: AnswerMap;
-  current_step: number;
-  summary: string | null;
-  completed: boolean;
 };
 
 type Choice = { label: string; value: string; portrait: string };
@@ -190,14 +187,14 @@ export default function LifeJourney({
 }: {
   user: User;
   firstName: string;
-  supabase: SupabaseClient;
+  supabase: SupabaseClient<Database>;
   onCreateStory: (prompt?: string, title?: string, content?: string) => Promise<void>;
   notice: (message: string) => void;
 }) {
   const [journey, setJourney] = useState<JourneyRow | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [draft, setDraft] = useState("");
+  const [draftState, setDraftState] = useState({ id: "", value: "" });
 
   useEffect(() => {
     let active = true;
@@ -216,7 +213,7 @@ export default function LifeJourney({
     return () => { active = false; };
   }, [notice, supabase, user.id]);
 
-  const answers = journey?.answers || {};
+  const answers = useMemo(() => journey?.answers || {}, [journey?.answers]);
   const currentStep = journey?.current_step || 0;
   const testPortrait = useMemo(() => buildPortrait(firstName, answers, false), [answers, firstName]);
   const finalPortrait = useMemo(() => buildPortrait(firstName, answers, true), [answers, firstName]);
@@ -226,9 +223,8 @@ export default function LifeJourney({
   const currentEmotional = emotionalIndex >= 0 && emotionalIndex < emotionalQuestions.length ? emotionalQuestions[emotionalIndex] : null;
   const totalAnswered = Object.keys(answers).filter((key) => key !== "_test_reviewed").length;
 
-  useEffect(() => {
-    if (currentEmotional) setDraft(answers[currentEmotional.id] || "");
-  }, [answers, currentEmotional]);
+  const draftForQuestion = currentEmotional ? answers[currentEmotional.id] || "" : "";
+  const draft = currentEmotional && draftState.id === currentEmotional.id ? draftState.value : draftForQuestion;
 
   async function persist(nextAnswers: AnswerMap, nextStep: number, completed = false) {
     setSaving(true);
@@ -264,9 +260,19 @@ export default function LifeJourney({
 
   async function saveEmotionalAnswer() {
     if (!currentEmotional || !draft.trim() || saving) return;
-    const nextAnswers = { ...answers, [currentEmotional.id]: draft.trim() };
+    const answer = draft.trim();
+    if (!answer) return;
+    const nextAnswers = { ...answers, [currentEmotional.id]: answer };
     const nextStep = currentStep + 1;
     await persist(nextAnswers, nextStep, nextStep === testQuestions.length + emotionalQuestions.length);
+  }
+
+  async function skipCurrentQuestion() {
+    if (saving || (!currentTest && !currentEmotional)) return;
+    const questionId = currentTest?.id || currentEmotional?.id;
+    if (!questionId) return;
+    const nextStep = currentStep + 1;
+    await persist({ ...answers, [`_skipped_${questionId}`]: "yes" }, nextStep, nextStep === testQuestions.length + emotionalQuestions.length);
   }
 
   async function goBack() {
@@ -333,11 +339,12 @@ export default function LifeJourney({
         <span>{choice.label}</span><b>→</b>
       </button>)}
     </div> : currentEmotional ? <div className="journey-open-answer">
-      <textarea value={draft} onChange={(event) => setDraft(event.target.value)} placeholder={currentEmotional.placeholder} rows={8} />
+      <textarea value={draft} onChange={(event) => setDraftState({ id: currentEmotional.id, value: event.target.value })} placeholder={currentEmotional.placeholder} rows={8} />
       <small>Tu respuesta se guarda de forma privada y podrás convertirla en historia al terminar.</small>
     </div> : null}
     <div className="journey-actions">
       <button className="button button-soft" onClick={goBack} disabled={currentStep === 0 || saving}>Anterior</button>
+      {(currentTest || currentEmotional) && <button className="journey-skip" onClick={skipCurrentQuestion} disabled={saving}>Saltar por ahora</button>}
       {currentEmotional && <button className="button button-primary" onClick={saveEmotionalAnswer} disabled={!draft.trim() || saving}>{saving ? "Guardando…" : currentStep === 11 ? "Terminar mi recorrido" : "Guardar y continuar"}</button>}
     </div>
   </section>;
