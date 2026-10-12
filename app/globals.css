@@ -226,4 +226,11 @@ footer .brand{color:#fff}.footer-links a{color:#b6c4b8}.creator-credit{border-co
 @media(prefers-reduced-motion:reduce){.hero-image,.step-card,.quick-actions button,.button{transition:none!important}.hero-image{transform:none!important}}
 .auth-cooldown{display:flex;align-items:center;justify-content:space-between;gap:16px;font-size:12px!important;line-height:1.5!important;color:var(--rust)!important;margin:14px 0 0!important}
 .auth-cooldown button{border:0;border-bottom:1px solid currentColor;background:transparent;color:var(--rust);padding:0 0 2px;cursor:pointer;font-size:12px;font-weight:700;white-space:nowrap}
+.auth-methods{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;background:#e8e3d9;margin:0 0 42px;border-radius:999px}
+.auth-methods button{border:0;border-radius:999px;background:transparent;color:#728077;padding:11px 12px;cursor:pointer;font-size:11px;font-weight:700;transition:.2s}
+.auth-methods button.active{background:var(--forest);color:#fff}
+.password-recovery{border:0;background:transparent;color:var(--rust);padding:15px 0 0;cursor:pointer;font-size:12px;font-weight:700}
+.password-recovery:disabled{opacity:.55;cursor:not-allowed}
+.auth-switch{font-size:12px!important;text-align:center;margin-top:28px!important;color:#728077!important}
+.auth-switch button{border:0;background:transparent;color:var(--rust);cursor:pointer;font-size:12px;font-weight:800;margin-left:6px;text-decoration:underline;text-underline-offset:3px}
 @media(max-width:520px){.auth-cooldown{align-items:flex-start;flex-direction:column;gap:9px}}

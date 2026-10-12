@@ -21,6 +21,12 @@ export default function WorkspaceClient() {
   const [user, setUser] = useState<User | null | undefined>(undefined);
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
+  const [passwordConfirmationSent, setPasswordConfirmationSent] = useState(false);
+  const [authMethod, setAuthMethod] = useState<"password" | "link">("password");
+  const [registering, setRegistering] = useState(false);
+  const [password, setPassword] = useState("");
+  const [passwordConfirmation, setPasswordConfirmation] = useState("");
+  const [recoveryMode, setRecoveryMode] = useState(false);
   const [sending, setSending] = useState(false);
   const [retryAfter, setRetryAfter] = useState(0);
   const [view, setView] = useState<View>("home");
@@ -76,6 +82,7 @@ export default function WorkspaceClient() {
       authStateKey.current = nextKey;
       activeOwnerId.current = nextKey;
       setUser(nextUser);
+      if (!nextUser) setRecoveryMode(false);
       setEditor(null);
       setChapterStory(null);
       setStories([]);
@@ -85,7 +92,8 @@ export default function WorkspaceClient() {
       else setBusy(false);
     };
 
-    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "PASSWORD_RECOVERY") setRecoveryMode(true);
       applySession(session?.user || null);
     });
     supabase.auth.getUser().then(({ data }) => {
@@ -117,6 +125,84 @@ export default function WorkspaceClient() {
     setRetryAfter(0);
     setMessage("");
     setSent(true);
+  }
+
+  function resetAuthForm() {
+    setEmail("");
+    setPassword("");
+    setPasswordConfirmation("");
+    setMessage("");
+    setSent(false);
+    setPasswordConfirmationSent(false);
+    setRetryAfter(0);
+  }
+
+  function switchAuthMethod(method: "password" | "link") {
+    resetAuthForm();
+    setAuthMethod(method);
+  }
+
+  async function submitPasswordAuth(event: FormEvent) {
+    event.preventDefault();
+    if (sending) return;
+    if (password.length < 8) {
+      setMessage("La contraseña debe tener al menos 8 caracteres.");
+      return;
+    }
+    if (registering && password !== passwordConfirmation) {
+      setMessage("Las contraseñas no coinciden.");
+      return;
+    }
+    setSending(true);
+    setMessage("");
+    const redirectTo = `${window.location.origin}/mi-espacio`;
+    const result = registering
+      ? await supabase.auth.signUp({ email, password, options: { emailRedirectTo: redirectTo } })
+      : await supabase.auth.signInWithPassword({ email, password });
+    setSending(false);
+    if (result.error) {
+      const errorMessage = result.error.message.toLowerCase();
+      if (errorMessage.includes("invalid login credentials")) setMessage("El correo o la contraseña no son correctos.");
+      else if (errorMessage.includes("already registered") || errorMessage.includes("already exists")) setMessage("Esta cuenta ya existe. Entra con tu contraseña o recupera el acceso.");
+      else setMessage("No hemos podido completar el acceso. Comprueba los datos e inténtalo de nuevo.");
+      return;
+    }
+    setPassword("");
+    setPasswordConfirmation("");
+    if (registering && !result.data.session) {
+      setPasswordConfirmationSent(true);
+      return;
+    }
+  }
+
+  async function sendPasswordReset() {
+    if (!email || sending) {
+      setMessage("Escribe primero tu correo electrónico.");
+      return;
+    }
+    setSending(true);
+    setMessage("");
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/mi-espacio` });
+    setSending(false);
+    if (error) {
+      setMessage("No hemos podido enviar el enlace de recuperación. Espera unos minutos e inténtalo de nuevo.");
+      return;
+    }
+    setPasswordConfirmationSent(true);
+  }
+
+  async function updateRecoveredPassword(event: FormEvent) {
+    event.preventDefault();
+    if (password.length < 8) return setMessage("La contraseña debe tener al menos 8 caracteres.");
+    if (password !== passwordConfirmation) return setMessage("Las contraseñas no coinciden.");
+    setSending(true);
+    const { error } = await supabase.auth.updateUser({ password });
+    setSending(false);
+    if (error) return setMessage("No hemos podido guardar la contraseña. Inténtalo de nuevo.");
+    setRecoveryMode(false);
+    setPassword("");
+    setPasswordConfirmation("");
+    setMessage("Contraseña guardada. Ya puedes entrar siempre con tu correo y contraseña.");
   }
 
   async function saveProfile(event: FormEvent<HTMLFormElement>) {
@@ -232,7 +318,9 @@ export default function WorkspaceClient() {
 
   if (user === undefined) return <main className="auth-page"><div className="auth-card"><span className="leaf">⌁</span><p>Preparando tu espacio privado…</p></div></main>;
 
-  if (!user) return <main className="auth-page"><section className="auth-card"><Link href="/" className="brand"><span className="leaf">⌁</span>Raíces</Link>{sent ? <><p className="eyebrow">Revisa tu correo</p><h1>Tu enlace ya va de camino.</h1><p>Hemos enviado un acceso seguro a <strong>{email}</strong>. Puedes cerrar esta página y abrir el enlace desde tu correo.</p><button className="button button-soft" onClick={() => { setSent(false); setEmail(""); setMessage(""); }}>Usar otro correo</button></> : <><p className="eyebrow">Tu espacio privado</p><h1>Entra sin contraseña.</h1><p>Escribe tu correo y te enviaremos un enlace seguro. Solo tú podrás acceder a tus historias y recuerdos.</p><form onSubmit={sendLink}><label>Correo electrónico<input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="tu@correo.com" autoComplete="email" required disabled={sending} /></label><button className="button button-primary" type="submit" disabled={sending}>{sending ? "Enviando…" : "Enviarme un enlace seguro"}</button></form>{message && <div className="auth-message" role="alert">{message}</div>}{retryAfter > 0 && <div className="auth-cooldown" role="status"><span>Espera recomendada: {retryAfter}s</span><button type="button" onClick={() => { setRetryAfter(0); setEmail(""); setMessage(""); }}>Cambiar de correo ahora</button></div>}</>}</section></main>;
+  if (recoveryMode && user) return <main className="auth-page"><section className="auth-card"><Link href="/" className="brand"><span className="leaf">⌁</span>Raíces</Link><p className="eyebrow">Recuperación segura</p><h1>Crea tu contraseña.</h1><p>Elige una contraseña personal para que puedas volver a tu espacio sin esperar otro enlace.</p><form onSubmit={updateRecoveredPassword}><label>Nueva contraseña<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="new-password" minLength={8} required /></label><label>Repite la contraseña<input type="password" value={passwordConfirmation} onChange={(event) => setPasswordConfirmation(event.target.value)} autoComplete="new-password" minLength={8} required /></label><button className="button button-primary" type="submit" disabled={sending}>{sending ? "Guardando…" : "Guardar contraseña"}</button></form>{message && <div className="auth-message" role="alert">{message}</div>}</section></main>;
+
+  if (!user) return <main className="auth-page"><section className="auth-card"><Link href="/" className="brand"><span className="leaf">⌁</span>Raíces</Link>{passwordConfirmationSent ? <><p className="eyebrow">Revisa tu correo</p><h1>Ya casi estás dentro.</h1><p>Te hemos enviado un enlace seguro para confirmar la cuenta o recuperar tu contraseña. Cuando lo abras, volverás directamente a Raíces.</p><button className="button button-soft" onClick={resetAuthForm}>Volver al acceso</button></> : sent ? <><p className="eyebrow">Revisa tu correo</p><h1>Tu enlace ya va de camino.</h1><p>Hemos enviado un acceso seguro a <strong>{email}</strong>. Puedes cerrar esta página y abrir el enlace desde tu correo.</p><button className="button button-soft" onClick={resetAuthForm}>Usar otro correo</button></> : <><div className="auth-methods" role="tablist" aria-label="Método de acceso"><button type="button" role="tab" aria-selected={authMethod === "password"} className={authMethod === "password" ? "active" : ""} onClick={() => switchAuthMethod("password")}>Correo y contraseña</button><button type="button" role="tab" aria-selected={authMethod === "link"} className={authMethod === "link" ? "active" : ""} onClick={() => switchAuthMethod("link")}>Enlace seguro</button></div>{authMethod === "password" ? <><p className="eyebrow">Tu espacio privado</p><h1>{registering ? "Crea tu espacio." : "Entra en tu espacio."}</h1><p>{registering ? "Crea una cuenta personal para guardar tus historias y recuerdos." : "Entra con tu correo y tu contraseña personal."}</p><form onSubmit={submitPasswordAuth}><label>Correo electrónico<input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="tu@correo.com" autoComplete="email" required disabled={sending} /></label><label>Contraseña<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Mínimo 8 caracteres" autoComplete={registering ? "new-password" : "current-password"} minLength={8} required disabled={sending} /></label>{registering && <label>Repite la contraseña<input type="password" value={passwordConfirmation} onChange={(event) => setPasswordConfirmation(event.target.value)} autoComplete="new-password" minLength={8} required disabled={sending} /></label>}<button className="button button-primary" type="submit" disabled={sending}>{sending ? "Comprobando…" : registering ? "Crear mi cuenta" : "Entrar en mi espacio"}</button></form>{!registering && <button className="password-recovery" type="button" onClick={sendPasswordReset} disabled={sending}>He olvidado mi contraseña</button>}<p className="auth-switch">{registering ? "¿Ya tienes una cuenta?" : "¿Es tu primera vez?"}<button type="button" onClick={() => { setRegistering((value) => !value); setMessage(""); setPassword(""); setPasswordConfirmation(""); }}>{registering ? "Entrar" : "Crear una cuenta"}</button></p></> : <><p className="eyebrow">Acceso sin contraseña</p><h1>Entra con un enlace.</h1><p>Escribe tu correo y te enviaremos un acceso seguro. No necesitas recordar ninguna contraseña.</p><form onSubmit={sendLink}><label>Correo electrónico<input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="tu@correo.com" autoComplete="email" required disabled={sending} /></label><button className="button button-primary" type="submit" disabled={sending}>{sending ? "Enviando…" : "Enviarme un enlace seguro"}</button></form>{retryAfter > 0 && <div className="auth-cooldown" role="status"><span>Espera recomendada: {retryAfter}s</span><button type="button" onClick={() => { setRetryAfter(0); setEmail(""); setMessage(""); }}>Cambiar de correo ahora</button></div>}</>}{message && <div className="auth-message" role="alert">{message}</div>}</>}</section></main>;
 
   if (!user.user_metadata?.full_name?.trim() || !["female", "male", "other"].includes(user.user_metadata?.gender)) return <main className="auth-page"><section className="auth-card"><Link href="/" className="brand"><span className="leaf">⌁</span>Raíces</Link><p className="eyebrow">Antes de comenzar</p><h1>Queremos conocerte</h1><p>Tu nombre y la forma en que quieres que nos dirijamos a ti harán que cada bienvenida y cada pregunta se sientan realmente tuyas.</p><form onSubmit={saveProfile}><label>Tu nombre<input name="name" type="text" defaultValue={user.user_metadata?.full_name || ""} placeholder="Por ejemplo, Rocío" autoComplete="name" required /></label><label>¿Cómo quieres que nos dirijamos a ti?<select name="gender" defaultValue={user.user_metadata?.gender || ""} required><option value="" disabled>Elige una opción</option><option value="female">Mujer</option><option value="male">Hombre</option><option value="other">Otro / prefiero una bienvenida neutra</option></select></label><button className="button button-primary" type="submit">Entrar en mi espacio</button></form>{message && <div className="onboarding-message" role="status">{message}</div>}</section></main>;
 
