@@ -100,7 +100,7 @@ export default function WorkspaceClient() {
 
   async function sendLink(event: FormEvent) {
     event.preventDefault();
-    if (sending || retryAfter > 0) return;
+    if (sending) return;
     setSending(true);
     setMessage("");
     const redirectTo = `${window.location.origin}/mi-espacio`;
@@ -110,7 +110,7 @@ export default function WorkspaceClient() {
       const rateLimited = error.status === 429 || error.message.toLowerCase().includes("rate limit") || error.message.toLowerCase().includes("too many");
       if (rateLimited) {
         setRetryAfter(60);
-        setMessage("Por seguridad, el servicio necesita una pausa entre enlaces. Puedes corregir el correo ahora; vuelve a intentarlo cuando termine la cuenta atrás.");
+        setMessage("El servicio ha limitado temporalmente los envíos. Puedes cambiar el correo ahora; si el límite es general, tendrás que esperar para solicitar otro enlace.");
       } else setMessage("No hemos podido enviar el enlace. Comprueba el correo e inténtalo de nuevo.");
       return;
     }
@@ -232,7 +232,7 @@ export default function WorkspaceClient() {
 
   if (user === undefined) return <main className="auth-page"><div className="auth-card"><span className="leaf">⌁</span><p>Preparando tu espacio privado…</p></div></main>;
 
-  if (!user) return <main className="auth-page"><section className="auth-card"><Link href="/" className="brand"><span className="leaf">⌁</span>Raíces</Link>{sent ? <><p className="eyebrow">Revisa tu correo</p><h1>Tu enlace ya va de camino.</h1><p>Hemos enviado un acceso seguro a <strong>{email}</strong>. Puedes cerrar esta página y abrir el enlace desde tu correo.</p><button className="button button-soft" onClick={() => { setSent(false); setEmail(""); setMessage(""); }}>Usar otro correo</button></> : <><p className="eyebrow">Tu espacio privado</p><h1>Entra sin contraseña.</h1><p>Escribe tu correo y te enviaremos un enlace seguro. Solo tú podrás acceder a tus historias y recuerdos.</p><form onSubmit={sendLink}><label>Correo electrónico<input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="tu@correo.com" autoComplete="email" required disabled={sending} /></label><button className="button button-primary" type="submit" disabled={sending || retryAfter > 0}>{sending ? "Enviando…" : retryAfter > 0 ? `Espera ${retryAfter}s` : "Enviarme un enlace seguro"}</button></form>{message && <div className="auth-message" role="alert">{message}</div>}{retryAfter > 0 && <p className="auth-cooldown" role="status">Puedes cambiar el correo mientras esperas. El botón se activará automáticamente.</p>}</>}</section></main>;
+  if (!user) return <main className="auth-page"><section className="auth-card"><Link href="/" className="brand"><span className="leaf">⌁</span>Raíces</Link>{sent ? <><p className="eyebrow">Revisa tu correo</p><h1>Tu enlace ya va de camino.</h1><p>Hemos enviado un acceso seguro a <strong>{email}</strong>. Puedes cerrar esta página y abrir el enlace desde tu correo.</p><button className="button button-soft" onClick={() => { setSent(false); setEmail(""); setMessage(""); }}>Usar otro correo</button></> : <><p className="eyebrow">Tu espacio privado</p><h1>Entra sin contraseña.</h1><p>Escribe tu correo y te enviaremos un enlace seguro. Solo tú podrás acceder a tus historias y recuerdos.</p><form onSubmit={sendLink}><label>Correo electrónico<input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="tu@correo.com" autoComplete="email" required disabled={sending} /></label><button className="button button-primary" type="submit" disabled={sending}>{sending ? "Enviando…" : "Enviarme un enlace seguro"}</button></form>{message && <div className="auth-message" role="alert">{message}</div>}{retryAfter > 0 && <div className="auth-cooldown" role="status"><span>Espera recomendada: {retryAfter}s</span><button type="button" onClick={() => { setRetryAfter(0); setEmail(""); setMessage(""); }}>Cambiar de correo ahora</button></div>}</>}</section></main>;
 
   if (!user.user_metadata?.full_name?.trim() || !["female", "male", "other"].includes(user.user_metadata?.gender)) return <main className="auth-page"><section className="auth-card"><Link href="/" className="brand"><span className="leaf">⌁</span>Raíces</Link><p className="eyebrow">Antes de comenzar</p><h1>Queremos conocerte</h1><p>Tu nombre y la forma en que quieres que nos dirijamos a ti harán que cada bienvenida y cada pregunta se sientan realmente tuyas.</p><form onSubmit={saveProfile}><label>Tu nombre<input name="name" type="text" defaultValue={user.user_metadata?.full_name || ""} placeholder="Por ejemplo, Rocío" autoComplete="name" required /></label><label>¿Cómo quieres que nos dirijamos a ti?<select name="gender" defaultValue={user.user_metadata?.gender || ""} required><option value="" disabled>Elige una opción</option><option value="female">Mujer</option><option value="male">Hombre</option><option value="other">Otro / prefiero una bienvenida neutra</option></select></label><button className="button button-primary" type="submit">Entrar en mi espacio</button></form>{message && <div className="onboarding-message" role="status">{message}</div>}</section></main>;
 
