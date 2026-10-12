@@ -19,19 +19,21 @@ export default function Home() {
         <div className="hero-image" role="img" aria-label="Manos sosteniendo una antigua fotografía familiar sobre un cuaderno" />
         <div className="hero-shade" />
         <div className="hero-content">
+          <div className="hero-index"><span>RQ / 01</span><span>Archivo vital</span></div>
           <p className="eyebrow">Tu memoria, en un lugar seguro</p>
-          <h1>Tu vida merece<br />ser contada.</h1>
+          <h1>Tu vida merece<br /><em>un lugar donde quedarse.</em></h1>
           <p className="hero-copy">Un espacio privado para escribir, guardar tus recuerdos y compartirlos solo con quien tú elijas.</p>
           <div className="hero-actions">
             <a href="/mi-espacio" className="button button-primary">Comenzar mi historia <span>→</span></a>
             <a href="#como-funciona" className="button button-soft">Descubrir cómo funciona</a>
           </div>
-          <p className="privacy-note"><span aria-hidden="true">⌾</span> Privado desde el primer momento</p>
+          <div className="hero-footnote"><p className="privacy-note"><span aria-hidden="true">⌾</span> Privado desde el primer momento</p><span className="hero-scroll">Desliza para entrar en tu historia <b>↓</b></span></div>
         </div>
       </section>
 
       <section className="intro section" id="como-funciona">
         <div className="section-heading">
+          <div className="section-index"><span>01</span><span>El gesto de recordar</span></div>
           <p className="eyebrow">Tu historia, a tu ritmo</p>
           <h2>Recordar también es<br />una forma de cuidar.</h2>
           <p>No necesitas saber escribir. Te acompañamos con preguntas delicadas para convertir tus recuerdos en relatos que suenen a ti.</p>
@@ -57,6 +59,7 @@ export default function Home() {
 
       <section className="story-section section" id="historias">
         <div className="story-visual">
+          <span className="visual-index">ARCHIVO / 1978</span>
           <div className="paper-note"><span>12 de julio de 1978</span><strong>Un verano inolvidable</strong><p>Hay lugares que uno abandona, pero que nunca terminan de abandonarnos.</p></div>
           <div className="photo-card"><div className="memory-photo" /><span>En casa de los abuelos</span></div>
         </div>
@@ -74,6 +77,7 @@ export default function Home() {
 
       <section className="privacy-section section" id="privacidad">
         <div className="privacy-copy">
+          <div className="section-index light-index"><span>02</span><span>El derecho a elegir</span></div>
           <p className="eyebrow light">Privado por naturaleza</p>
           <h2>Tu historia no pertenece a internet. Te pertenece a ti.</h2>
           <p>Todo comienza siendo privado. Puedes conservarlo solo para ti, invitar a una persona concreta o compartir una historia con tu familia.</p>
